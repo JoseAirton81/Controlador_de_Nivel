@@ -1,8 +1,9 @@
 /*
- * Projeto_final.c
- *
- * Created: 28/11/2020 08:28:07
- * Author : junio
+ Controlador de Nível de água do Reservatório
+ 
+ Autor: Gustavo Costa
+  e     José Airton 
+     
  */ 
 
 #define F_CPU 16000000UL
