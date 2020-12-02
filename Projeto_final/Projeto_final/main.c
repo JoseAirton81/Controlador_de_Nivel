@@ -15,11 +15,10 @@
 #include "nokia5110.h"
 
 
-char estado, aux2;//Variáveis globais
-
+//Variáveis globais
 
 #define tam_vetor 3
-unsigned char leitura_P_string[tam_vetor];
+unsigned char leitura_P_string[tam_vetor], estado;
 uint16_t leitura_P ;
 
 //------------------------------------------------------------------------------------
@@ -62,12 +61,12 @@ ISR(USART_RX_vect)
 	
 	if(recebido=='d')
 	PORTB = 0b00000000;//BOMBA OFF
-	nokia_lcd_init(); //Inicia o LCD
-	
-	estado = recebido;
-	Funcao_LCD(estado);
 	
 	USART_Transmit(recebido);
+	
+	estado = recebido;
+	
+	nokia_lcd_init(); //Inicia o LCD
 	
 }
 
@@ -100,7 +99,6 @@ unsigned char USART_Receive(void)
 ISR (INT0_vect);
 ISR (INT1_vect);
 
-void Funcao_LCD(char i);
 void Funcao_Auto(uint8_t x);
 
 int main()
@@ -129,20 +127,28 @@ int main()
 	OCR0B = 0 ;//controle do ciclo ativo do PWM 0C0A (PD5), Duty Cycle inicial
 	
 	//Configuração do USART
-	USART_Init(MYUBRR);
-	
-	// Configuração do Comparador  analógico
-	DIDR1 = 0b00000011; //desabilita as entradas digitais nos pinos AIN0 e AIN1
-	ACSR = 1<<ACIE; //habilita interrup. por mudança de estado na saída do comparador
-	 
+	USART_Init(MYUBRR); 
 	
 	nokia_lcd_init(); //Inicia o LCD
 	
 	while(1)
 	{	
-	
-		Funcao_LCD(estado);
-		Funcao_Auto(OCR0B);
+		Funcao_Auto(OCR0B);//Função para ligar e desligar a bomba automático
+			
+		// Comando do LCD
+		
+		nokia_lcd_clear(); //Limpa o LCD
+		int2string(leitura_P, leitura_P_string); //converte a leitura do ADC em string
+		nokia_lcd_write_string("Reservatorio",1);
+		nokia_lcd_set_cursor(0,20);
+		nokia_lcd_write_string(leitura_P_string,2); //Escreve a leitura no buffer do LCD
+		nokia_lcd_write_string("%",2);
+		nokia_lcd_set_cursor(0,40);
+		if(estado=='l')nokia_lcd_write_string("Bomba: ON", 1);
+		else nokia_lcd_write_string("Bomba: OFF", 1);
+		nokia_lcd_render(); //Atualiza a tela do display com o conteúdo do buffer
+		_delay_ms(1000);
+		
 	}
 	
 }
@@ -152,7 +158,6 @@ ISR(INT0_vect)//interrupção externa 0, Ligar a Bomba
 	PORTB = 0b00000001;//BOMBA ON
 	estado = 'l';
 	nokia_lcd_init(); //Inicia o LCD
-	Funcao_LCD(estado);
 }
 
 ISR(INT1_vect) //interrupção externa 1, Desligar a Bomba
@@ -160,40 +165,18 @@ ISR(INT1_vect) //interrupção externa 1, Desligar a Bomba
 	PORTB = 0b00000000;//BOMBA OFF
 	estado = 'd';
 	nokia_lcd_init(); //Inicia o LCD
-	Funcao_LCD(estado);
 }
 
-
-void Funcao_LCD(char i){
+void Funcao_Auto(uint8_t x){//Função para ligar e desligar a bomba automático
 	
-	
-	nokia_lcd_clear(); //Limpa o LCD
-	int2string(leitura_P, leitura_P_string); //converte a leitura do ADC em string
-	nokia_lcd_write_string("Reservatorio",1);
-	nokia_lcd_set_cursor(0,20);
-	nokia_lcd_write_string(leitura_P_string,2); //Escreve a leitura no buffer do LCD
-	nokia_lcd_write_string("%",2);
-	nokia_lcd_set_cursor(0,40);
-	if(i =='l')nokia_lcd_write_string("Bomba: ON", 1);
-	else nokia_lcd_write_string("Bomba: OFF", 1);
-	nokia_lcd_render(); //Atualiza a tela do display com o conteúdo do buffer
-	_delay_ms(10);
-	
-}
-void Funcao_Auto(uint8_t x){
-	
-		if (x <= 13){
+		if (x <= 13){ // Nível do reservatório em 5%
 			PORTB = 0b00000001;//BOMBA ON
 			estado = 'l';
 			nokia_lcd_init(); //Inicia o LCD
-			Funcao_LCD(estado);
-			_delay_ms(1500);
 		}
-		if (x >= 250){
+		if (x >= 250){// Nível do reservatório em 98%
 			PORTB = 0b00000000;//BOMBA OFF
 			estado = 'd';	
 			nokia_lcd_init(); //Inicia o LCD
-			Funcao_LCD(estado);
-			_delay_ms(1500);
 		}
 }
